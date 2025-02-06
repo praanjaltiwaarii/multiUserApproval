@@ -13,6 +13,7 @@ import com.backend.multiUserApproval.repository.TaskRepository;
 import com.backend.multiUserApproval.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -27,6 +28,9 @@ public class TaskService {
     private final UserRepository userRepository;
     private final ApprovalRepository approvalRepository;
     private final EmailService emailService;
+
+    @Value("${task.approval.minimum-three-enabled:false}")
+    private boolean minimumThreeApprovalEnabled;
 
     public TaskService(TaskRepository taskRepository,
                        UserRepository userRepository,
@@ -136,7 +140,13 @@ public class TaskService {
 
     private boolean isFullyApproved(Task task) {
         long approvalCount = approvalRepository.countByTaskId(task.getId());
-        return approvalCount == task.getApprovers().size();
+        int totalApprovers = task.getApprovers().size();
+
+        if (minimumThreeApprovalEnabled && totalApprovers > 3) {
+            return approvalCount >= 3;
+        }
+
+        return approvalCount == totalApprovers;
     }
 
     public Task getTask(Long taskId) {
